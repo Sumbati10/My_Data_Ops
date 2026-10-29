@@ -5,12 +5,12 @@ usage() {
   cat <<'EOF'
 usage: install.sh [--apply] [--render-only] [--overlay FILE]
 
-Links mstack into Claude Code, Codex, pi, Devin, and Cursor. Prints the plan and changes nothing unless --apply is given.
+Links dataops into Claude Code, Codex, pi, Devin, and Cursor. Prints the plan and changes nothing unless --apply is given.
 
   --apply         make the changes
-  --render-only   only write ~/.config/mstack/AGENTS.md (use when home-manager owns the links)
+  --render-only   only write ~/.config/dataops/AGENTS.md (use when home-manager owns the links)
   --overlay FILE  private rules appended after the core AGENTS.md
-                  (default: $MSTACK_OVERLAY, else ~/.config/mstack/overlay.md if it exists)
+                  (default: $DATAOPS_OVERLAY, else ~/.config/dataops/overlay.md if it exists)
 
 Safe to rerun. It never overwrites, moves, or deletes a file it did not create.
 It removes its own skill links when that skill is no longer in mstack.
@@ -19,7 +19,7 @@ EOF
 
 apply=0
 render_only=0
-overlay="${MSTACK_OVERLAY:-}"
+overlay="${DATAOPS_OVERLAY:-}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -32,10 +32,10 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-mstack_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-out_dir="${XDG_CONFIG_HOME:-$HOME/.config}/mstack"
+dataops_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+out_dir="${XDG_CONFIG_HOME:-$HOME/.config}/dataops"
 rendered="$out_dir/AGENTS.md"
-marker="$out_dir/.rendered-by-mstack"
+marker="$out_dir/.rendered-by-dataops"
 codex_home="${CODEX_HOME:-$HOME/.codex}"
 
 if [ -z "$overlay" ] && [ -f "$out_dir/overlay.md" ]; then
@@ -54,32 +54,32 @@ run() {
   fi
 }
 
-owned_by_mstack() {
+owned_by_dataops() {
   [ ! -e "$rendered" ] && [ ! -L "$rendered" ] && return 0
-  [ -L "$rendered" ] && [ "$(readlink "$rendered")" = "$mstack_dir/AGENTS.md" ] && return 0
+  [ -L "$rendered" ] && [ "$(readlink "$rendered")" = "$dataops_dir/AGENTS.md" ] && return 0
   [ -e "$marker" ]
 }
 
 render() {
-  if ! owned_by_mstack; then
-    say "skip    $rendered exists and was not written by mstack. Move it aside, then rerun."
+  if ! owned_by_dataops; then
+    say "skip    $rendered exists and was not written by dataops. Move it aside, then rerun."
     return
   fi
   run mkdir -p "$out_dir"
   if [ -z "$overlay" ]; then
-    if [ -L "$rendered" ] && [ "$(readlink "$rendered")" = "$mstack_dir/AGENTS.md" ]; then
-      say "ok      $rendered -> $mstack_dir/AGENTS.md"
+    if [ -L "$rendered" ] && [ "$(readlink "$rendered")" = "$dataops_dir/AGENTS.md" ]; then
+      say "ok      $rendered -> $dataops_dir/AGENTS.md"
       return
     fi
-    say "link    $rendered -> $mstack_dir/AGENTS.md (no overlay, edits are live)"
-    run ln -sfn "$mstack_dir/AGENTS.md" "$rendered"
+    say "link    $rendered -> $dataops_dir/AGENTS.md (no overlay, edits are live)"
+    run ln -sfn "$dataops_dir/AGENTS.md" "$rendered"
     run touch "$marker"
     return
   fi
-  say "render  $rendered = $mstack_dir/AGENTS.md + $overlay (rerun after editing either)"
+  say "render  $rendered = $dataops_dir/AGENTS.md + $overlay (rerun after editing either)"
   if [ "$apply" -eq 1 ]; then
     tmp="$(mktemp "$out_dir/.AGENTS.md.XXXXXX")"
-    { cat "$mstack_dir/AGENTS.md"; printf '\n'; cat "$overlay"; } > "$tmp"
+    { cat "$dataops_dir/AGENTS.md"; printf '\n'; cat "$overlay"; } > "$tmp"
     mv -f "$tmp" "$rendered"
     touch "$marker"
   fi
@@ -108,21 +108,21 @@ link() {
   run ln -s "$target" "$dest"
 }
 
-points_into_mstack() {
-  [ -L "$1" ] && [ "$(readlink "$1")" = "$mstack_dir/skills/$(basename "$1")" ]
+points_into_dataops() {
+  [ -L "$1" ] && [ "$(readlink "$1")" = "$dataops_dir/skills/$(basename "$1")" ]
 }
 
 prune_skill_links() {
   for agents_link in "$HOME/.agents/skills"/*; do
-    points_into_mstack "$agents_link" || continue
+    points_into_dataops "$agents_link" || continue
     name="$(basename "$agents_link")"
-    [ -d "$mstack_dir/skills/$name" ] && continue
+    [ -d "$dataops_dir/skills/$name" ] && continue
     claude_link="$HOME/.claude/skills/$name"
     if [ -L "$claude_link" ] && [ "$(readlink "$claude_link")" = "$agents_link" ]; then
-      say "remove  $claude_link (skill $name is no longer in mstack)"
+      say "remove  $claude_link (skill $name is no longer in dataops)"
       run unlink "$claude_link"
     fi
-    say "remove  $agents_link (skill $name is no longer in mstack)"
+    say "remove  $agents_link (skill $name is no longer in dataops)"
     run unlink "$agents_link"
   done
 }
@@ -142,12 +142,12 @@ link "$rendered" "$HOME/.config/devin/AGENTS.md"
 
 prune_skill_links
 
-for skill_dir in "$mstack_dir"/skills/*/; do
+for skill_dir in "$dataops_dir"/skills/*/; do
   name="$(basename "$skill_dir")"
-  link "$mstack_dir/skills/$name" "$HOME/.agents/skills/$name"
+  link "$dataops_dir/skills/$name" "$HOME/.agents/skills/$name"
   link "$HOME/.agents/skills/$name" "$HOME/.claude/skills/$name"
 done
 
-link "$mstack_dir/bin/check-comments" "$HOME/.local/bin/check-comments"
+link "$dataops_dir/bin/check-comments" "$HOME/.local/bin/check-comments"
 
 say "manual  Cursor keeps user rules only in Customize > Rules. Paste $rendered there after each change."

@@ -69,6 +69,12 @@ If the two disagree about that repo, the repo file wins, except on safety, secre
 - Keep write hooks and signals thin. Heavy or cross-model work goes to a background job.
 - Precompute heavy reads (fleet-wide scans, reports) in the background. Requests read the stored result.
 - Store ids, not copies of names or personal data. Expand them at read time. Keep personal data out of logs and metric labels.
+- Shipped SQL names its columns. `SELECT *` is for exploration only.
+- Pipelines are idempotent: rerunning a task over the same window yields the same rows, no duplicates.
+- Write by partition or merge key. Blind append plus downstream dedupe is a bug.
+- Nulls get handled at the edge: coalesce, filter, or assert that the column cannot be null.
+- Timestamps carry a timezone. Naive datetimes do not ship.
+- Data files stay out of git: no CSV, parquet, dumps, or committed notebook output. Code in git, data in the warehouse.
 - Help text and API descriptions are one short sentence.
 - User-facing copy never shows code: no file paths, config names, or env vars.
 
@@ -77,6 +83,8 @@ If the two disagree about that repo, the repo file wins, except on safety, secre
 - Prove it on the real thing: run it, call the endpoint, render the screen, query the data. "Tests pass" alone is not proof.
 - Report evidence, not claims: the command, the output, the numbers. Someone else must be able to rerun it.
 - Check every claim about data against the real data, read-only, before you state it.
+- Verify table and column names against the real schema (catalog, information_schema, dbt docs), not from memory.
+- A pipeline change reports evidence on real data: row counts, null rates, sample rows before and after.
 - A bug fix starts with a reproduction. Its regression test fails before the fix and passes after it.
 - A test calls the code the way its users do and asserts a literal expected value.
 - Rewrite or delete a test that would still pass if the code returned nothing, or that can never fail.
@@ -118,7 +126,7 @@ If the two disagree about that repo, the repo file wins, except on safety, secre
 - Look for these, in this order:
   1. Correctness: wrong results, 500s, races, money precision, side effects that survive a rollback, permission holes.
   2. Reuse: an existing helper, pattern, fixture, or definition that the change duplicates.
-  3. Data and scale: N+1 queries, unbounded queries, scans in a request path, missing pagination, locking or irreversible migrations.
+  3. Data and scale: N+1 queries, unbounded queries, scans in a request path, missing pagination, non-idempotent pipeline writes, locking or irreversible migrations.
   4. Operability: a kill switch, errors visible in error tracking, a rollout and rollback path.
   5. House rules: comments, docstrings, underscore names, single-use constants and wrappers, long help text, em dashes.
   6. Tests: they prove the behaviour, unmocked, with the edges.
@@ -128,6 +136,8 @@ If the two disagree about that repo, the repo file wins, except on safety, secre
 
 - Read-only queries through the documented routes are fine.
 - Never write to a real database: no migrations, backfills, or mutating commands against one. Code that does it is fine as a PR. Running it is mine.
+- Warehouse dev and staging schemas are fine to run against through the project's own tooling (dbt, Airflow, notebooks). Production and shared schemas are not.
+- Production personal data stays in the warehouse. Local work uses the documented sampled or anonymized extract.
 - Never do anything destructive without my explicit go: delete resources, force-push a shared branch, kill services, discard uncommitted work.
 - Never `rm` a variable or glob path. Write a new round of artifacts into a fresh directory.
 - Refer to secrets by variable name only. Never read or print `.envrc`, `.env`, or decrypted secret files, not even masked.
