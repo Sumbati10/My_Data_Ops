@@ -1,6 +1,6 @@
 # My_Data_Ops
 
-My standard for coding agents, tuned for data engineering: how I want them to work, write code and SQL, prove pipelines work on real data, ship PRs, and review. One file, every harness (Claude Code, Codex, pi, Devin, Cursor). Forked and revised from [mstack](https://github.com/mamane19/mstack).
+My standard for coding agents, tuned for data engineering: how I want them to work, write code and SQL, prove pipelines work on real data, ship PRs, and review. One file, every harness (Claude Code, Codex, pi, Devin, Cursor). 
 
 ## Three layers
 
